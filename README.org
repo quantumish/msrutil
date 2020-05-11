@@ -1,0 +1,3 @@
+#+TITLE: msrutil
+* About
+MacOS kernel extension for accessing Model Specific Registers, Process Control Blocks, and other kernel data. Made to power [[github:richardfeynmanrocks/omnifetch][omnifetch]].
