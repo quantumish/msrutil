@@ -252,7 +252,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = msrutil/Info.plist;
-				INSTALL_PATH = "~/";
+				INSTALL_PATH = "~/projects/msrutil/debug";
 				MODULE_NAME = quantumish.msrutil;
 				MODULE_START = msrutil_start;
 				MODULE_STOP = msrutil_stop;
@@ -268,7 +268,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = msrutil/Info.plist;
-				INSTALL_PATH = "~/";
+				INSTALL_PATH = "~/projects/msrutil/release";
 				MODULE_NAME = quantumish.msrutil;
 				MODULE_START = msrutil_start;
 				MODULE_STOP = msrutil_stop;
