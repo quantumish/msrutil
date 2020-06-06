@@ -8,114 +8,74 @@
 
 // FORGET-ME-NOT: Build solely ~/projects/msrutil/build/Products/Debug/msrutil.kext and
 
+#define BUFSIZE 2048
+#define PORT 5001
+
+#include "msrutil.h"
 
 #include <sys/systm.h>
 #include <sys/kern_control.h>
 #include <os/log.h>
 #include <mach/mach_types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <sys/types.h>
 
-#define MSR_GET 0
-#define MSR_TO_READ_SET 0
-#define MAX_STRING_LEN 20
-#define DEFAULT_STRING "default"
+// Included in Xcode template, not sure why.
+/* kern_return_t msrutil_start(kmod_info_t * ki, void *d); */
+/* kern_return_t msrutil_stop(kmod_info_t *ki, void *d); */
 
-//Included in Xcode template, not sure why.
-kern_return_t msrutil_start(kmod_info_t * ki, void *d);
-kern_return_t msrutil_stop(kmod_info_t *ki, void *d);
-
-char g_string_buf[10];
-static boolean_t g_filter_registered = FALSE;
-static kern_ctl_ref g_ctl_ref;
-
-static int msrutil_get(kern_ctl_ref ctl_ref, u_int32_t unit, void *unitinfo, int opt,
-                         void *data, size_t *len)
-{
-    int ret = 0;
-    switch (opt) {
-        case (MSR_GET):
-            *len = min(MAX_STRING_LEN, *len);
-            strncpy(data, g_string_buf, *len);
-            break;
-        default:
-            ret = ENOTSUP;
-            break;
-    }
-    return ret;
-}
-
-static int msrutil_set(kern_ctl_ref ctl_ref, u_int32_t unit, void* unitinfo, int opt,
-                         void* data, size_t len)
-{
-    int ret = 0;
-    switch (opt) {
-        case MSR_TO_READ_SET:
-            strncpy(g_string_buf, (char*)data, min(MAX_STRING_LEN, len));
-            printf("MSR_TO_READ_SET: new string set to: \"%s\"\n", g_string_buf);
-            break;
-        default:
-            ret = ENOTSUP;
-            break;
-    }
-    return ret;
-}
-
-static int msrutil_connect(kern_ctl_ref ctl_ref, struct sockaddr_ctl *sac, void** unitinfo)
-{
-    os_log(OS_LOG_DEFAULT, "Process with PID %d connected.", proc_selfpid());
-    return 0;
-}
-static int msrutil_disconnect(kern_ctl_ref ctl_ref, uint32_t unit, void* unitinfo)
-{
-    os_log(OS_LOG_DEFAULT, "Process with PID %d disconnected.", proc_selfpid());
-    return 0;
-}
 
 kern_return_t msrutil_start(kmod_info_t * ki, void *d)
 {
     os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
-    
-    static struct kern_ctl_reg userctl = {
-        "quantumish.msrutil",
-        0,
-        0,
-        CTL_FLAG_PRIVILEGED,
-        0,
-        0,
-        msrutil_connect,
-        msrutil_disconnect,
-        NULL,
-        msrutil_get,
-        msrutil_set
-    };
-    
 
-    int ret = ctl_register(&userctl, &g_ctl_ref);
-    
-    uint32_t lo, hi;
-    // Example off of stackoverflow to test assembly
-    // NOTE: Figure out why kernel (and my computer) crashes when I run non-volatile assembly that isn't just 'nop'!
-    asm volatile("rdmsr":"=a"(lo),"=d"(hi):"c"(0x1b1));
-    
-    os_log(OS_LOG_DEFAULT, "Contents of MSR? lo: %d hi: %d", lo, hi);
-    //    register int *eax asm ("eax");
-    //    register int *ecx asm ("ecx");
-    //    register int *edx asm ("edx");
-    //    printf("%i%i%i", *eax, *ecx, *edx);
-    strncpy(g_string_buf, DEFAULT_STRING, strlen(DEFAULT_STRING));
-    
-    if (ret == KERN_SUCCESS)
+    int s;
+    if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        g_filter_registered = TRUE;
-        return KERN_SUCCESS;
+        os_log(OS_LOG_DEFAULT, "Could not start socket.");
+        return KERN_FAILURE;
     }
-    return KERN_FAILURE;
+
+    // Establish sockaddr_in struct to pass into bind function
+    struct sockaddr_in addr;
+    memset((char *)&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET; // Specify address family.
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY just 0.0.0.0, machine IP address
+    addr.sin_port = htons(PORT); // Specify port.
+    if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        os_log(OS_LOG_DEFAULT, "Could not bind socket.");
+        return KERN_FAILURE;
+    }
+
+    // IP address of client
+    struct sockaddr_in remaddr;
+    socklen_t addrlen = sizeof(remaddr);
+    int recvlen;
+    unsigned char buf[BUFSIZE];
+
+    while (1==1) {
+        char direction[BUFSIZE];
+        char args[BUFSIZE];
+        char response[BUFSIZE];
+        recvlen = recvfrom(s, buf, BUFSIZE, 0, (struct sockaddr *)&remaddr, &addrlen);
+        sscanf(buf, "%s %s", direction, args);
+        if (strcmp(direction, "MSR") == 0) {
+          uint32_t lo, hi;
+          // Example off of stackoverflow to test assembly
+          // NOTE: Figure out why kernel (and my computer) crashes when I run
+          // non-volatile assembly that isn't just 'nop'!
+          asm volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0x1b1));
+          sprintf(response, "Contents of MSR: %d %d", lo, hi);
+          sendto(s, response, strlen(response)+1, 0, (struct sockaddr *)&remaddr, addrlen);
+        }
+    }
+    return KERN_SUCCESS;
 }
 
 kern_return_t msrutil_stop(kmod_info_t *ki, void *d)
 {
-    if (g_filter_registered)
-        ctl_deregister(g_ctl_ref);
-    
     os_log(OS_LOG_DEFAULT, "msrutil successfully unloaded.");
     return KERN_SUCCESS;
 }
