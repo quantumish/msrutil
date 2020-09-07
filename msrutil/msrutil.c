@@ -32,7 +32,13 @@ kern_return_t msrutil_start(kmod_info_t * ki, void *d)
     asm("movq %%rax,%0" : "=r"(eax));
     asm("movq %%rcx,%0" : "=r"(ecx));
     asm("movq %%rdx,%0" : "=r"(edx));
-    os_log(OS_LOG_DEFAULT, "Read MSR. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
+    os_log(OS_LOG_DEFAULT, "Read MSR IA32_THERM_STATUS. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
+    asm volatile ("movl $390, %ecx");
+    asm volatile ("rdmsr");
+    asm("movq %%rax,%0" : "=r"(eax));
+    asm("movq %%rcx,%0" : "=r"(ecx));
+    asm("movq %%rdx,%0" : "=r"(edx));
+    os_log(OS_LOG_DEFAULT, "Read MSR IA32_PERFEVTSEL0. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
     return KERN_SUCCESS;
 }
 
