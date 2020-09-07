@@ -24,15 +24,15 @@
 kern_return_t msrutil_start(kmod_info_t * ki, void *d)
 {
     os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
-    asm volatile ("mov %ecx, $412");
+    asm volatile ("movl $412, %ecx");
     asm volatile ("rdmsr");
-    unsigned long eax = 0;
-    unsigned long ecx = 0;
-    unsigned long edx = 0;
-    asm("movl %%eax,%0" : "=r"(eax));
-    asm("movl %%ecx,%0" : "=r"(ecx));
-    asm("movl %%edx,%0" : "=r"(edx));
-    os_log(OS_LOG_DEFAULT, "Read MSR. EAX: %ul, ECX: %ul, %EDX: %ul", eax, ecx, edx);
+    unsigned long long eax = 0;
+    unsigned long long ecx = 0;
+    unsigned long long edx = 0;
+    asm("movq %%rax,%0" : "=r"(eax));
+    asm("movq %%rcx,%0" : "=r"(ecx));
+    asm("movq %%rdx,%0" : "=r"(edx));
+    os_log(OS_LOG_DEFAULT, "Read MSR. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
     return KERN_SUCCESS;
 }
 
