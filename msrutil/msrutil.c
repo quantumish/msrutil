@@ -24,16 +24,15 @@
 kern_return_t msrutil_start(kmod_info_t * ki, void *d)
 {
     os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
-    //struct kern_ctl_reg userctl = {};
-    //    ctl_register(userctl, *ctlref);
-    /* uint32_t lo, hi; */
-    /* // Example off of stackoverflow to test assembly */
-    /* // NOTE: Figure out why kernel (and my computer) crashes when I run */
-    /* // non-volatile assembly that isn't just 'nop'! */
-    /* asm volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0x1b1)); */
-    /* os_log(OS_LOG_DEFAULT, "Contents of MSR: %d %d", lo, hi); */
-    /* } */
-    asm volatile ("cmpq %rax, %rbx");
+    asm volatile ("mov %ecx, $412");
+    asm volatile ("rdmsr");
+    unsigned long eax = 0;
+    unsigned long ecx = 0;
+    unsigned long edx = 0;
+    asm("movl %%eax,%0" : "=r"(eax));
+    asm("movl %%ecx,%0" : "=r"(ecx));
+    asm("movl %%edx,%0" : "=r"(edx));
+    os_log(OS_LOG_DEFAULT, "Read MSR. EAX: %ul, ECX: %ul, %EDX: %ul", eax, ecx, edx);
     return KERN_SUCCESS;
 }
 
