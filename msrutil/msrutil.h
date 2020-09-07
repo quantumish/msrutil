@@ -19,8 +19,5 @@
 #define MAX_STRING_LEN 20
 #define DEFAULT_STRING "default"
 
-//char g_string_buf[10];
-//static boolean_t g_filter_registered = FALSE;
-//static kern_ctl_ref g_ctl_ref;
 
 #endif /* msrutil_h */
