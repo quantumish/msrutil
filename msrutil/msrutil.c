@@ -27,14 +27,13 @@ kern_return_t msrutil_start(kmod_info_t * ki, void *d)
     unsigned long long eax = 0;
     unsigned long long ecx = 0;
     unsigned long long edx = 0;
-    while (1==1) {
+    for (int i = 0; i < 50; i++) {
         asm volatile ("movl $412, %ecx");
         asm volatile ("rdmsr");
         asm("movq %%rax,%0" : "=r"(eax));
         asm("movq %%rcx,%0" : "=r"(ecx));
         asm("movq %%rdx,%0" : "=r"(edx));
         os_log(OS_LOG_DEFAULT, "Read MSR IA32_THERM_STATUS. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
-        sleep(10);
     }
     // Weirdness is ensuing!
     /* asm volatile ("movl $390, %ecx"); */
