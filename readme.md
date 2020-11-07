@@ -13,7 +13,7 @@ This was designed to help with another project focusing on displaying low-level 
 3. Run `csrutil enable --without kext` to allow unsigned KEXTs to run on your computer. If you are on 10.14, you will have to fully disable SIP by running `csrutil disable`.
 4. Reboot your computer oncemore.
 ### Loading
-1. Run `xcodebuild --configuration Debug` to build the KEXT.
+1. Run `xcodebuild -configuration Debug` to build the KEXT.
 2. Navigate to the KEXT executable (likely at `./build/Debug/`). Check the modified date, delete it if it doesn't match, then re-build.
 3. Run `sudo cp -R msrutil.kext /private/tmp && cd /private/tmp` to create a copy of the KEXT executable that you own, allowing you to load it.
 4. Run `sudo kextload msrutil.kext` to load the KEXT.
