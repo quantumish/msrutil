@@ -21,6 +21,55 @@
 /* kern_return_t msrutil_start(kmod_info_t * ki, void *d); */
 /* kern_return_t msrutil_stop(kmod_info_t *ki, void *d); */
 
+
+/* A simple setsockopt handler */
+errno_t EPHandleSet( kern_ctl_ref ctlref, unsigned int unit, void *userdata, int opt, void *data, size_t len )
+{
+    int    error = EINVAL;
+    os_log(OS_LOG_DEFAULT, "EPHandleSet opt is %d\n", opt);
+    return error;
+}
+ 
+/* A simple A simple getsockopt handler */
+errno_t EPHandleGet(kern_ctl_ref ctlref, unsigned int unit, void *userdata, int opt, void *data, size_t *len)
+{
+    os_log(OS_LOG_DEFAULT, "EPHandleGet opt is %d *****************\n", opt); 
+    /* int    error = EINVAL; */
+/* #if DO_LOG */
+/*     log(LOG_ERR, "EPHandleGet opt is %d *****************\n", opt); */
+/* #endif */
+/*     return error; */
+    return 0;
+}
+ 
+/* A minimalist connect handler */
+errno_t
+EPHandleConnect(kern_ctl_ref ctlref, struct sockaddr_ctl *sac, void **unitinfo)
+{
+#if DO_LOG
+    log(LOG_ERR, "EPHandleConnect called\n");
+#endif
+    return (0);
+}
+ 
+/* A minimalist disconnect handler */
+errno_t
+EPHandleDisconnect(kern_ctl_ref ctlref, unsigned int unit, void *unitinfo)
+{
+#if DO_LOG
+    log(LOG_ERR, "EPHandleDisconnect called\n");
+#endif
+    return 0;
+}
+ 
+/* A minimalist write handler */
+errno_t EPHandleWrite(kern_ctl_ref ctlref, unsigned int unit, void *userdata, mbuf_t m, int flags)
+{
+    os_log(OS_LOG_DEFAULT, "EPHandleWrite called\n");
+    return (0);
+}
+
+
 kern_return_t msrutil_start(kmod_info_t * ki, void *d)
 {
     os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
@@ -35,13 +84,26 @@ kern_return_t msrutil_start(kmod_info_t * ki, void *d)
         asm("movq %%rdx,%0" : "=r"(edx));
         os_log(OS_LOG_DEFAULT, "Read MSR IA32_THERM_STATUS. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
     }
-    // Weirdness is ensuing!
-    /* asm volatile ("movl $390, %ecx"); */
-    /* asm volatile ("rdmsr"); */
-    /* asm("movq %%rax,%0" : "=r"(eax)); */
-    /* asm("movq %%rcx,%0" : "=r"(ecx)); */
-    /* asm("movq %%rdx,%0" : "=r"(edx)); */
-    /* os_log(OS_LOG_DEFAULT, "Read MSR IA32_PERFEVTSEL0. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx); */
+    asm volatile ("movl $390, %ecx");
+    asm volatile ("rdmsr");
+    asm("movq %%rax,%0" : "=r"(eax));
+    asm("movq %%rcx,%0" : "=r"(ecx));
+    asm("movq %%rdx,%0" : "=r"(edx));
+    os_log(OS_LOG_DEFAULT, "Read MSR IA32_PERFEVTSEL0. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
+    errno_t error;
+    struct kern_ctl_reg ep_ctl; // Initialize control
+    kern_ctl_ref kctlref;
+    bzero(&ep_ctl, sizeof(ep_ctl));  // sets ctl_unit to 0
+    ep_ctl.ctl_id = 0; /* OLD STYLE: ep_ctl.ctl_id = kEPCommID; */
+    ep_ctl.ctl_unit = 0;
+    strlcpy(ep_ctl.ctl_name, "org.mklinux.nke.foo", 19+1);
+    ep_ctl.ctl_flags = CTL_FLAG_PRIVILEGED & CTL_FLAG_REG_ID_UNIT;
+    ep_ctl.ctl_send = EPHandleWrite;
+    ep_ctl.ctl_getopt = EPHandleGet;
+    ep_ctl.ctl_setopt = EPHandleSet;
+    ep_ctl.ctl_connect = EPHandleConnect;
+    ep_ctl.ctl_disconnect = EPHandleDisconnect;
+    error = ctl_register(&ep_ctl, &kctlref);
     return KERN_SUCCESS;
 }
 
@@ -50,3 +112,4 @@ kern_return_t msrutil_stop(kmod_info_t *ki, void *d)
     os_log(OS_LOG_DEFAULT, "msrutil successfully unloaded.");
     return KERN_SUCCESS;
 }
+ 
