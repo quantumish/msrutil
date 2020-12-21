@@ -18,10 +18,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-// Included in Xcode template, not sure why.
-/* kern_return_t msrutil_start(kmod_info_t * ki, void *d); */
-/* kern_return_t msrutil_stop(kmod_info_t *ki, void *d); */
-
+#define MAX_INSTRUCTION_SIZE 32
 
 /* A simple setsockopt handler */
 errno_t EPHandleSet( kern_ctl_ref ctlref, unsigned int unit, void *userdata, int opt, void *data, size_t len )
@@ -62,19 +59,41 @@ EPHandleDisconnect(kern_ctl_ref ctlref, unsigned int unit, void *unitinfo)
 #endif
     return 0;
 }
- 
+
+errno_t get_msr(int id)
+{
+    unsigned long long eax = 0;
+    unsigned long long ecx = 0;
+    unsigned long long edx = 0;
+    char s[MAX_INSTRUCTION_SIZE];
+    sprintf(s, "movl $%d, %%ecx", &id);
+    asm volatile (s);
+    asm volatile ("rdmsr");
+    asm("movq %%rax,%0" : "=r"(eax));
+    asm("movq %%rcx,%0" : "=r"(ecx));
+    asm("movq %%rdx,%0" : "=r"(edx));
+    os_log(OS_LOG_DEFAULT, "Read MSR %d. EAX: %llu, ECX: %llu, EDX: %llu", id, eax, ecx, edx);
+    return 0;
+}
+
 /* A minimalist write handler */
 errno_t EPHandleWrite(kern_ctl_ref ctlref, unsigned int unit, void *userdata, mbuf_t m, int flags)
 {
     os_log(OS_LOG_DEFAULT, "EPHandleWrite called");
-
+    
     // From https://stackoverflow.com/questions/11969961/kernel-communication
     size_t data_length;
     data_length = mbuf_pkthdr_len(m);
-
-    char data_received[data_length];
+    
+    char data_received[data_length+1];
     memcpy(data_received, (char*) mbuf_data(m), data_length);
-    if (memcmp(data_received, "abc", 3) == 0) os_log(OS_LOG_DEFAULT, "Victory!");
+    data_received[data_length] = '\0';
+    
+    if (memcmp(data_received, "READ", 4) == 0) {
+        int msr_id;
+        sscanf(data_received+5, "%d", &msr_id);
+        get_msr(msr_id);
+    }
     return 0;
 }
 
