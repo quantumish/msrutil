@@ -14,6 +14,7 @@
 #include <sys/kern_control.h>
 #include <os/log.h>
 #include <mach/mach_types.h>
+#include <sys/sys/mbuf.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -65,8 +66,8 @@ EPHandleDisconnect(kern_ctl_ref ctlref, unsigned int unit, void *unitinfo)
 /* A minimalist write handler */
 errno_t EPHandleWrite(kern_ctl_ref ctlref, unsigned int unit, void *userdata, mbuf_t m, int flags)
 {
-    os_log(OS_LOG_DEFAULT, "EPHandleWrite called\n");
-    return (0);
+    os_log(OS_LOG_DEFAULT, "EPHandleWrite called with %s\n", (char*)userdata);
+    return 0;
 }
 
 
