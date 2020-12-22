@@ -65,9 +65,7 @@ errno_t get_msr(int id)
     unsigned long long eax = 0;
     unsigned long long ecx = 0;
     unsigned long long edx = 0;
-    char s[MAX_INSTRUCTION_SIZE];
-    sprintf(s, "movl $%d, %%ecx", &id);
-    asm volatile (s);
+    asm("movl %0,%%ecx" : "+r"(id));
     asm volatile ("rdmsr");
     asm("movq %%rax,%0" : "=r"(eax));
     asm("movq %%rcx,%0" : "=r"(ecx));
@@ -91,7 +89,7 @@ errno_t EPHandleWrite(kern_ctl_ref ctlref, unsigned int unit, void *userdata, mb
     
     if (memcmp(data_received, "READ", 4) == 0) {
         int msr_id;
-        sscanf(data_received+5, "%d", &msr_id);
+        sscanf(data_received, "READ %d", &msr_id);
         get_msr(msr_id);
     }
     return 0;
@@ -100,24 +98,6 @@ errno_t EPHandleWrite(kern_ctl_ref ctlref, unsigned int unit, void *userdata, mb
 
 kern_return_t msrutil_start(kmod_info_t * ki, void *d)
 {
-    os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
-    unsigned long long eax = 0;
-    unsigned long long ecx = 0;
-    unsigned long long edx = 0;
-    for (int i = 0; i < 50; i++) {
-        asm volatile ("movl $412, %ecx");
-        asm volatile ("rdmsr");
-        asm("movq %%rax,%0" : "=r"(eax));
-        asm("movq %%rcx,%0" : "=r"(ecx));
-        asm("movq %%rdx,%0" : "=r"(edx));
-        os_log(OS_LOG_DEFAULT, "Read MSR IA32_THERM_STATUS. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
-    }
-    asm volatile ("movl $390, %ecx");
-    asm volatile ("rdmsr");
-    asm("movq %%rax,%0" : "=r"(eax));
-    asm("movq %%rcx,%0" : "=r"(ecx));
-    asm("movq %%rdx,%0" : "=r"(edx));
-    os_log(OS_LOG_DEFAULT, "Read MSR IA32_PERFEVTSEL0. EAX: %llu, ECX: %llu, EDX: %llu", eax, ecx, edx);
     errno_t error;
     struct kern_ctl_reg ep_ctl; // Initialize control
     kern_ctl_ref kctlref;
@@ -132,6 +112,7 @@ kern_return_t msrutil_start(kmod_info_t * ki, void *d)
     ep_ctl.ctl_connect = EPHandleConnect;
     ep_ctl.ctl_disconnect = EPHandleDisconnect;
     error = ctl_register(&ep_ctl, &kctlref);
+    os_log(OS_LOG_DEFAULT, "msrutil successfully loaded.");
     return KERN_SUCCESS;
 }
 
