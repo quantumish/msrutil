@@ -16,29 +16,39 @@
 
 void read_thermal(uint64_t msr)
 {
-    printf("Thermal Status %llu", msr & 1);
-    printf("Thermal Status Log %llu", msr & (uint64_t)pow(2, 1));
-    printf("PROCHOT Event %llu", msr & (uint64_t)pow(2, 2));
-    printf("PROCHOT Log %llu", msr & (uint64_t)pow(2, 3));
-    printf("Critical Temperature %llu", msr & (uint64_t)pow(2, 4));
-    printf("Critical Temperature Log %llu", msr & (uint64_t)pow(2, 5));
-    printf("Thermal Threshold #1 %llu", msr & (uint64_t)pow(2, 6));
-    printf("Thermal Threshold #1 Log %llu", msr & (uint64_t)pow(2, 7));
-    printf("Thermal Threshold #2 %llu", msr & (uint64_t)pow(2, 8));
-    printf("Thermal Threshold #2 Log %llu", msr & (uint64_t)pow(2, 9));
-    printf("Power Limit Notif %llu", msr & (uint64_t)pow(2, 10));
-    printf("Power Limit Notif Log %llu", msr & (uint64_t)pow(2, 11));
+    printf("Thermal Status %d\n",            msr & 1);
+    printf("Thermal Status Log %d\n",       (msr & (uint64_t)pow(2, 1)) > 0);
+    printf("PROCHOT Event %d\n",            (msr & (uint64_t)pow(2, 2)) > 0);
+    printf("PROCHOT Log %d\n",              (msr & (uint64_t)pow(2, 3)) > 0);
+    printf("Critical Temperature %d\n",     (msr & (uint64_t)pow(2, 4)) > 0);
+    printf("Critical Temperature Log %d\n", (msr & (uint64_t)pow(2, 5)) > 0);
+    printf("Thermal Threshold #1 %d\n",     (msr & (uint64_t)pow(2, 6)) > 0);
+    printf("Thermal Threshold #1 Log %d\n", (msr & (uint64_t)pow(2, 7)) > 0);
+    printf("Thermal Threshold #2 %d\n",     (msr & (uint64_t)pow(2, 8)) > 0);
+    printf("Thermal Threshold #2 Log %d\n", (msr & (uint64_t)pow(2, 9)) > 0);
+    printf("Power Limit Notif %d\n",        (msr & (uint64_t)pow(2, 10)) > 0);
+    printf("Power Limit Notif Log %d\n",    (msr & (uint64_t)pow(2, 11)) > 0);
+    printf("Digital Reading %llu\n",        (msr & 0b1111111000000000000000) >> 15);
+    printf("Resolution %llu\n",             (msr & 0b111100000000000000000000000000) >> 26);
+    printf("Reading Valid %d\n",            (msr & (uint64_t)pow(2, 31)) > 0);
+}
+
+void read_thermal_target(uint64_t msr)
+{
+    printf("PROCHOT Target %llu\n",         (msr & 0b11111111000000000000000) >> 15);
+    printf("TCC Activation %llu\n",         (msr & 0b111100000000000000000000000) >> 23);
 }
 
 uint64_t get_msr()
 {
     FILE* fptr = fopen(PATH, "r");
     char line[1024];
-    char* target = "EAX";
+    char target[3] = "EAX";
     while (fgets(line, 1024, fptr) != NULL) {};
-    for (int i = 0; line[i] != '\0'; i++) {
-        if (strcmp(&line[i], target) == 0) {
-            return (uint64_t) strtoll(&line[i], NULL, 10);
+    printf("%s", line);
+    for (int i = 0; line[i] != '\0'; i++) {      
+        if (strncmp(&line[i], target, 3) == 0) {
+            return (uint64_t) strtoll(&line[i]+4, NULL, 10);
         }
     }
     printf("That's all folks!\n");
@@ -72,6 +82,10 @@ int main() {
     } else { /* no fd */
         fprintf(stderr, "failed to open socket\n");
     }
-    unsigned char msg[] = "READ 412";
-    write(fd, msg, 9);
+    write(fd, "READ 412", 9);
+    uint64_t msr = get_msr();
+    read_thermal(msr);
+    /* write(fd, "READ 418", 9); */
+    /* msr = get_msr(); */
+    /* read_thermal_target(msr); */
 }
