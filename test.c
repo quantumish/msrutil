@@ -5,15 +5,48 @@
 #include <sys/ioctl.h>
 #include <sys/kern_control.h>
 #include <sys/sys_domain.h>
-
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
+
+#define PATH "/Users/davidfreifeld/test.log"
+
+void read_thermal(uint64_t msr)
+{
+    printf("Thermal Status %llu", msr & 1);
+    printf("Thermal Status Log %llu", msr & (uint64_t)pow(2, 1));
+    printf("PROCHOT Event %llu", msr & (uint64_t)pow(2, 2));
+    printf("PROCHOT Log %llu", msr & (uint64_t)pow(2, 3));
+    printf("Critical Temperature %llu", msr & (uint64_t)pow(2, 4));
+    printf("Critical Temperature Log %llu", msr & (uint64_t)pow(2, 5));
+    printf("Thermal Threshold #1 %llu", msr & (uint64_t)pow(2, 6));
+    printf("Thermal Threshold #1 Log %llu", msr & (uint64_t)pow(2, 7));
+    printf("Thermal Threshold #2 %llu", msr & (uint64_t)pow(2, 8));
+    printf("Thermal Threshold #2 Log %llu", msr & (uint64_t)pow(2, 9));
+    printf("Power Limit Notif %llu", msr & (uint64_t)pow(2, 10));
+    printf("Power Limit Notif Log %llu", msr & (uint64_t)pow(2, 11));
+}
+
+uint64_t get_msr()
+{
+    FILE* fptr = fopen(PATH, "r");
+    char line[1024];
+    char* target = "EAX";
+    while (fgets(line, 1024, fptr) != NULL) {};
+    for (int i = 0; line[i] != '\0'; i++) {
+        if (strcmp(&line[i], target) == 0) {
+            return (uint64_t) strtoll(&line[i], NULL, 10);
+        }
+    }
+    printf("That's all folks!\n");
+}
 
 int main() {
-    struct sockaddr_ctl       addr;
-    int                       ret = 1;
+    struct sockaddr_ctl addr;
+    int ret = 1;
     int result;
     int fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
     if (fd != -1) {
@@ -21,10 +54,6 @@ int main() {
         addr.sc_len = sizeof(addr);
         addr.sc_family = AF_SYSTEM;
         addr.ss_sysaddr = AF_SYS_CONTROL;
-#ifdef STATIC_ID
-        addr.sc_id = kEPCommID;  // should be unique - use a registered Creator ID here
-        addr.sc_unit = kEPCommUnit;  // should be unique.
-#else
         {
             struct ctl_info info;
             memset(&info, 0, sizeof(info));
@@ -36,7 +65,6 @@ int main() {
             addr.sc_id = info.ctl_id;
             addr.sc_unit = 0;
         }
-#endif
         result = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
         if (result) {
             fprintf(stderr, "connect failed %d\n", result);
@@ -44,14 +72,6 @@ int main() {
     } else { /* no fd */
         fprintf(stderr, "failed to open socket\n");
     }
-
-    /* if (!result) { */
-    /*     result = setsockopt( fd, SYSPROTO_CONTROL, 2, NULL, 0); */
-    /*     if (result){ */
-    /*         fprintf(stderr, "setsockopt failed on kEPCommand1 call - result was %d\n", result); */
-    /*     } */
-    /* } */
-    unsigned char msg[] = "abc";
-    send(fd, msg, 3, 10);
-    //result = getsockopt( fd, SYSPROTO_CONTROL, 2, NULL, 0);
+    unsigned char msg[] = "READ 412";
+    write(fd, msg, 9);
 }
